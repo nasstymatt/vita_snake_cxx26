@@ -1,0 +1,32 @@
+CompileFlags:
+  CompilationDatabase: build
+  Add:
+    - "-std=c++26"
+    # Relative include paths resolve against compile_commands.json's "directory"
+    # field (the build/ dir), so vendor/ is one level up from there.
+    - "-I../vendor"
+  # -fmodules-ts is a GCC/old-Clang spelling that current clangd's clang doesn't
+  # know (drv_unknown_argument). It comes from CMakeLists.txt and is valid for
+  # the real build; strip it only for clangd's analysis.
+  Remove:
+    - "-fmodules-ts"
+
+---
+# Treat .cppm files as C++ module interface units
+If:
+  PathMatch: .*\.cppm$
+CompileFlags:
+  Add:
+    - "-std=c++26"
+    - "-xc++-module"
+
+---
+Diagnostics:
+  Suppress:
+    - "module_not_found"
+    - "unexpected_tokens_before_module"
+    - "import_not_found"
+    - "pp_including_mainfile_in_preamble"
+
+Index:
+  StandardLibrary: true

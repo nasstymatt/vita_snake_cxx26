@@ -1,0 +1,5 @@
+BasedOnStyle: llvm
+PointerAlignment: Left
+ReferenceAlignment: Left
+DerivePointerAlignment: false
+NamespaceIndentation: All
