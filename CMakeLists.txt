@@ -24,7 +24,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-fmodules-ts>")
+add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-fmodules-ts;-Wall;-Wextra>")
 
 # Vita toolchain injects -Wl,-q into CMAKE_CXX_FLAGS; strip it for
 # module-only (-c) invocations, since those never link.
@@ -98,11 +98,20 @@ endfunction()
 #
 # To add a module: add one line here. Nothing else in this file changes.
 set(VITA_MODULES
+    # Engine layer: game-agnostic, knows nothing about snake.
     "src/vita/process.cppm|vita.process|"
     "src/vita/math.cppm|vita.math|"
     "src/vita/ctrl.cppm|vita.ctrl|vita.math"
     "src/vita/gfx.cppm|vita.gfx|vita.math,vita.process|"
-		"src/vita/ui.cppm|vita.ui|vita.math,vita.gfx|"
+		"src/vita/ui.cppm|vita.ui|vita.math,vita.gfx,vita.process|"
+    "src/vita/platform.cppm|vita.platform|vita.gfx,vita.ui,vita.ctrl"
+
+    # Game layer. snake.assets knows nothing about the snake and snake.game
+    # knows nothing about drawing; only snake.render joins the two.
+    "src/snake/assets.cppm|snake.assets|vita.math,vita.gfx,vita.process"
+    "src/snake/game.cppm|snake.game|vita.math,vita.process"
+    "src/snake/render.cppm|snake.render|vita.math,vita.gfx,snake.game,snake.assets"
+    "src/snake/scene.cppm|snake.scene|vita.math,vita.gfx,vita.ctrl,vita.ui,snake.game,snake.assets,snake.render"
 )
 
 set(MODULE_OBJECTS "${CMAKE_BINARY_DIR}/std_module.o")

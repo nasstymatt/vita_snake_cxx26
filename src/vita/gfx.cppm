@@ -15,8 +15,10 @@ export struct Color {
 
   static constexpr Color white() { return {1, 1, 1, 1}; }
   static constexpr Color black() { return {0, 0, 0, 1}; }
-  static constexpr Color transparent() { return {0, 0, 0, 0}; }
   static constexpr Color rgb(float r, float g, float b) { return {r, g, b, 1}; }
+  static constexpr Color rgba(float r, float g, float b, float a) {
+    return {r, g, b, a};
+  }
 };
 
 using StbImage = std::unique_ptr<uint8_t, decltype(&stbi_image_free)>;
@@ -25,13 +27,35 @@ export namespace vita::gfx {
   enum class DrawArraysMode : GLenum {
     Lines = GL_LINES,
     Triangles = GL_TRIANGLES,
+    TriangleStrip = GL_TRIANGLE_STRIP,
   };
 
+  // Owns a GL texture name. Move-only.
   struct Texture {
-    explicit Texture(uint32_t tex) : gl_tex(tex) {}
+    explicit Texture(uint32_t tex = 0) : gl_tex(tex) {}
+    ~Texture() { reset(); }
+
+    Texture(const Texture&) = delete;
+    Texture& operator=(const Texture&) = delete;
+
+    Texture(Texture&& o) noexcept : gl_tex(std::exchange(o.gl_tex, 0)) {}
+    Texture& operator=(Texture&& o) noexcept {
+      if (this != &o) {
+        reset();
+        gl_tex = std::exchange(o.gl_tex, 0);
+      }
+      return *this;
+    }
+
     uint32_t getGLTex() const { return gl_tex; }
 
   private:
+    void reset() {
+      if (gl_tex)
+        glDeleteTextures(1, &gl_tex);
+      gl_tex = 0;
+    }
+
     uint32_t gl_tex;
   };
 
@@ -57,7 +81,8 @@ export namespace vita::gfx {
   };
 
   void init_2d(int legacy_pool_size = 0x800000) {
-    vglInitExtended(0, 960, 544, legacy_pool_size, SCE_GXM_MULTISAMPLE_NONE);
+    vglInitExtended(legacy_pool_size, screenWidth, screenHeight, 0x1000000,
+                    SCE_GXM_MULTISAMPLE_NONE);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrtho(0, screenWidth, screenHeight, 0, -1, 1);
@@ -79,15 +104,11 @@ export namespace vita::gfx {
     glEnableClientState(GL_VERTEX_ARRAY);
     glVertexPointer(2, GL_FLOAT, 0, vertices.data());
     glDrawArrays(std::to_underlying(mode), 0, vertices.size());
-    glDisable(GL_VERTEX_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
   }
 
   void draw_grid(const Grid& g, Color c) {
     draw_vertices(DrawArraysMode::Lines, g.vertices, c);
-  }
-
-  void draw_rects_vertices(std::span<const Vec2f> v, Color c) {
-    draw_vertices(DrawArraysMode::Triangles, v, c);
   }
 
   void present() { vglSwapBuffers(GL_FALSE); }
@@ -105,20 +126,16 @@ export namespace vita::gfx {
     return Texture(gl_tex);
   }
 
-  Texture load_texture_from_image(std::span<const uint8_t> image_bytes) {
-    int w, h, channels;
+  std::expected<Texture, std::string_view>
+  load_texture_from_image(std::span<const uint8_t> image_bytes) {
+    int w = 0, h = 0, channels = 0;
     StbImage pixels(stbi_load_from_memory(image_bytes.data(),
                                           image_bytes.size(), &w, &h, &channels,
                                           4),
                     &stbi_image_free);
 
-    vita::println("pixels size: {}", image_bytes.size());
-
-    if (!pixels) {
-      vita::println("stb_image failed: {}", stbi_failure_reason());
-      // sceClibAbort();
-      // unreachable
-    }
+    if (!pixels)
+      return std::unexpected(std::string_view{stbi_failure_reason()});
 
     return load_texture({w, h},
                         std::span<const uint8_t>(pixels.get(), w * h * 4));
@@ -142,7 +159,21 @@ export namespace vita::gfx {
     glDrawArrays(GL_QUADS, 0, 4);
 
     glDisableClientState(GL_TEXTURE_COORD_ARRAY); // teardown
+    glDisableClientState(GL_VERTEX_ARRAY);
     glDisable(GL_BLEND);
     glDisable(GL_TEXTURE_2D);
+  }
+
+  void fill_rect(Vec2f pos, Vec2f size, Color c) {
+    std::array<Vec2f, 4> vertices = {{
+        {pos.x, pos.y},
+        {pos.x + size.x, pos.y},
+        {pos.x, pos.y + size.y},
+        {pos.x + size.x, pos.y + size.y},
+    }};
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    draw_vertices(DrawArraysMode::TriangleStrip, vertices, c);
+    glDisable(GL_BLEND);
   }
 } // namespace vita::gfx
