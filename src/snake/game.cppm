@@ -53,6 +53,19 @@ export namespace snake {
 
       return t;
     }
+
+    Vec2i delta(Vec2i from, Vec2i to) const {
+      Vec2i d = to - from;
+      if (d.x > cols / 2)
+        d.x -= cols;
+      else if (d.x < -cols / 2)
+        d.x += cols;
+      if (d.y > rows / 2)
+        d.y -= rows;
+      else if (d.y < -rows / 2)
+        d.y += rows;
+      return d;
+    }
   };
 
   struct Player {

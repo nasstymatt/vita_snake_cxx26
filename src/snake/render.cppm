@@ -10,7 +10,7 @@ import snake.assets;
 using namespace vita;
 
 namespace snake::render {
-  // head.png faces up, tail.png connects upward, body.png runs vertically --
+  // head.png faces up, tail.png connects upward, body.png runs vertically -
   // so an unrotated sprite points up, and each step turns it 90 degrees CCW.
   int direction_to_rotation_steps(Vec2i dir) {
     if (dir == Player::right)
@@ -24,8 +24,7 @@ namespace snake::render {
 
   // corner.png connects the down and right edges of the tile, and one rotation
   // step turns it 90 degrees CCW (down->right->up->left), so step k connects
-  // {rot(down,k), rot(right,k)}. The neighbours to link up are the tiles the
-  // segment actually touches: prev at dirIn, next at -dirOut.
+  // {rot(down,k), rot(right,k)}.
   int corner_rotation(Vec2i dirIn, Vec2i dirOut) {
     const Vec2i toHead = dirIn;
     const Vec2i toTail = -dirOut;
@@ -61,14 +60,14 @@ export namespace snake::render {
 
       Vec2f pos = board.to_pixels(curr);
       Vec2f size = board.tile_size();
-      Vec2i dirIn = prev ? *prev - curr : player.vel;
+      Vec2i dirIn = prev ? board.delta(curr, *prev) : player.vel;
 
       if (i == 0) {
         assets.head.draw(pos, size, direction_to_rotation_steps(player.vel));
       } else if (!next) {
         assets.tail.draw(pos, size, direction_to_rotation_steps(dirIn));
       } else {
-        Vec2i dirOut = curr - *next;
+        Vec2i dirOut = board.delta(*next, curr);
         if (dirIn != dirOut) {
           assets.corner.draw(pos, size, corner_rotation(dirIn, dirOut));
         } else {
