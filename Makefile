@@ -6,7 +6,7 @@ app		 := snake
 all: clean build
 
 clean:
-	rm -r build
+	rm -rf build
 
 build:
 	mkdir -p build
