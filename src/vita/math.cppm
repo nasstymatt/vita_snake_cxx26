@@ -39,17 +39,10 @@ export namespace vita {
     float u, v;
   };
 
-  // Deliberately a flat struct rather than `Vertex : Vec2f, UV`. gfx hands
-  // &vertex.x and &vertex.u to glVertexPointer/glTexCoordPointer with
-  // sizeof(Vertex) as the stride, which only has defined offsets if Vertex is
-  // standard-layout -- and a class with two data-carrying base classes is not.
   struct Vertex {
     float x, y, u, v;
   };
 
-  // gfx passes &vertex.x and &vertex.u straight to GL with sizeof(Vertex) as
-  // the stride. Keep that assumption honest here rather than discovering it
-  // as garbled geometry.
   static_assert(std::is_standard_layout_v<Vertex>);
   static_assert(sizeof(Vertex) == 4 * sizeof(float));
 } // namespace vita
